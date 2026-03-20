@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Student Dashboard — Workshop Portal</title>
+  <link rel="stylesheet" href="/css/style.css"/>
+  <style>
+    /* ── QR Payment styles ── */
+    .reg-details-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;background:#f8faff;border-radius:10px;padding:14px;margin-bottom:16px;}
+    .reg-det-item label{font-size:0.72rem;color:var(--text-muted);font-weight:600;text-transform:uppercase;}
+    .reg-det-item .val{font-size:0.9rem;font-weight:700;color:var(--primary);}
+    .qr-wrapper{display:flex;flex-direction:column;align-items:center;padding:20px;background:#fff;border:2px dashed var(--border);border-radius:16px;margin-bottom:16px;}
+    .qr-wrapper img{border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,.1);}
+    .qr-title{font-size:0.85rem;font-weight:700;color:var(--primary);margin-bottom:10px;}
+    .qr-upi-text{font-size:0.75rem;color:var(--text-muted);margin-top:8px;font-family:monospace;}
+    .countdown-ring{position:relative;display:inline-flex;align-items:center;justify-content:center;width:64px;height:64px;margin:10px auto;}
+    .countdown-ring svg{position:absolute;top:0;left:0;transform:rotate(-90deg);}
+    .countdown-ring .num{font-size:1.2rem;font-weight:800;color:var(--primary);z-index:1;}
+    .countdown-ring circle{fill:none;stroke:#e2e8f0;stroke-width:5;}
+    .countdown-ring .prog{stroke:var(--primary);stroke-width:5;stroke-linecap:round;transition:stroke-dashoffset .9s linear;}
+    .confirm-bar{background:linear-gradient(135deg,#10b981,#059669);color:#fff;border-radius:10px;padding:12px 16px;text-align:center;font-weight:700;font-size:0.875rem;margin-top:12px;}
+    .pay-method-qr{font-size:0.8rem;color:var(--text-muted);margin-bottom:10px;text-align:center;}
+    .slot-info{display:flex;align-items:center;gap:6px;font-size:0.8rem;margin-top:4px;}
+    .slot-bar{height:6px;border-radius:3px;background:#e2e8f0;flex:1;overflow:hidden;}
+    .slot-fill{height:100%;border-radius:3px;background:linear-gradient(to right,#3b82f6,#8b5cf6);transition:width .4s;}
+    .my-reg-card{background:var(--card-bg);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow);margin-bottom:14px;border-left:4px solid var(--primary);}
+    .my-reg-title{font-size:1rem;font-weight:800;color:var(--primary);margin-bottom:6px;}
+    .my-reg-meta{display:flex;flex-wrap:wrap;gap:10px;font-size:0.8rem;color:var(--text-muted);margin-bottom:10px;}
+    .my-reg-footer{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;}
+    .txn-box{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:8px 12px;font-size:0.78rem;font-family:monospace;color:#065f46;word-break:break-all;}
+    .pay-success-anim{animation:popIn .4s ease;}
+    @keyframes popIn{from{transform:scale(0.7);opacity:0}to{transform:scale(1);opacity:1}}
+  </style>
+</head>
+<body>
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
+<div class="page-wrapper">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-icon">W</div>
+      <div><div class="brand-name">Workshop Portal</div><div class="brand-sub">Student Dashboard</div></div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Navigation</div>
+      <div class="nav-item active" onclick="showTab('browse')" id="nav-browse"><span class="nav-icon">🏫</span> Browse Workshops</div>
+      <div class="nav-item" onclick="showTab('myworkshops')" id="nav-myworkshops"><span class="nav-icon">📋</span> My Registrations</div>
+      <div class="nav-item" onclick="showTab('profile')" id="nav-profile"><span class="nav-icon">👤</span> My Profile</div>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-card">
+        <div class="avatar avatar-sm av3" id="sidebar-avatar">?</div>
+        <div><div class="user-name" id="sidebar-name">Loading...</div><div class="user-role">Student</div></div>
+      </div>
+      <button class="btn-logout" onclick="logout()">🚪 Logout</button>
+    <div style="margin-top: 20px; padding: 10px 0; border-top: 1px solid rgba(255,255,255,0.05); font-size: 0.65rem; color: rgba(255,255,255,0.3); text-align: center;">
+      @2024 collage workshop .all rights reserved
+    </div>
+   </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="main-content">
+    <div class="topbar">
+      <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+      <div class="topbar-title" id="topbar-title">Browse Workshops</div>
+    </div>
+    <div class="content-area">
+
+      <!-- Tab: Browse Workshops -->
+      <div id="tab-browse" class="tab-content active">
+        <div class="filter-bar">
+          <div class="search-wrapper"><span class="search-icon">🔍</span>
+            <input class="search-input" id="ws-search" type="text" placeholder="Search workshops..." oninput="filterWorkshops()"/>
+          </div>
+          <select class="form-control" id="ws-category" style="max-width:200px;" onchange="filterWorkshops()">
+            <option value="">All Categories</option>
+            <option>Web Development</option><option>Artificial Intelligence</option>
+            <option>Cloud Computing</option><option>Cybersecurity</option><option>Data Science</option>
+          </select>
+          <select class="form-control" id="ws-status" style="max-width:170px;" onchange="filterWorkshops()">
+            <option value="">All Statuses</option>
+            <option>UPCOMING</option><option>ONGOING</option><option>COMPLETED</option>
+          </select>
+        </div>
+        <div id="workshops-grid" class="workshops-grid">
+          <div class="loading-overlay"><span class="spinner"></span><span class="loading-text">Loading workshops...</span></div>
+        </div>
+      </div>
+
+      <!-- Tab: My Registrations -->
+      <div id="tab-myworkshops" class="tab-content">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+          <div style="font-size:1.1rem;font-weight:800;color:var(--primary);">📋 My Registered Workshops</div>
+          <button class="btn btn-sm btn-outline" onclick="loadMyRegistrations()">🔄 Refresh</button>
+        </div>
+        <div id="my-reg-list"><div class="loading-overlay"><span class="spinner"></span></div></div>
+      </div>
+
+      <!-- Tab: My Profile -->
+      <div id="tab-profile" class="tab-content">
+        <div class="card profile-card">
+          <div class="profile-header">
+            <div class="avatar avatar-lg av3" id="profile-avatar">?</div>
+            <h2 id="profile-name" style="font-size:1.3rem;">Loading...</h2>
+            <p id="profile-email" style="color:var(--text-muted);font-size:0.875rem;"></p>
+            <div style="margin-top:12px; background:var(--primary); color:white; padding:10px 15px; border-radius:12px; display:inline-block; box-shadow:0 4px 12px rgba(59,130,246,0.3);">
+              <div style="font-size:0.7rem; text-transform:uppercase; font-weight:700; opacity:0.8;">Total Amount Spent</div>
+              <div style="font-size:1.4rem; font-weight:800;" id="profile-spent">₹ 0</div>
+            </div>
+          </div>
+          <div class="card-body">
+            <div id="profile-view">
+              <div class="profile-info-grid" id="profile-info-grid"></div>
+              <div style="display:flex; gap:10px; margin-top:20px;">
+                <button class="btn btn-primary" onclick="enableEdit()">✏️ Edit Profile</button>
+                <button class="btn btn-outline" onclick="openChangePasswordModal()">🔑 Change Password</button>
+              </div>
+            </div>
+            <div id="profile-edit" style="display:none;">
+              <div id="profile-edit-error" class="alert alert-error" style="display:none;"></div>
+              <div class="form-group"><label class="form-label">Full Name</label><input type="text" id="edit-fullName" class="form-control"/></div>
+              <div class="form-group"><label class="form-label">Phone Number</label><input type="tel" id="edit-phone" class="form-control" maxlength="10"/></div>
+              <div class="form-group"><label class="form-label">Department</label>
+                <select id="edit-department" class="form-control">
+                  <option>Computer Science</option><option>Electronics</option><option>Mechanical</option>
+                  <option>Civil</option><option>Information Technology</option><option>Electrical</option>
+                  <option>MBA</option><option>BCA</option><option>MCA</option><option>Other</option>
+                </select></div>
+              <div class="form-group"><label class="form-label">Roll Number</label><input type="text" id="edit-rollNumber" class="form-control" maxlength="50"/></div>
+              <div class="form-group"><label class="form-label">Address</label><textarea id="edit-address" class="form-control" rows="2" maxlength="500"></textarea></div>
+              <div class="form-group"><label class="form-label">HOD Contact Details</label><input type="text" id="edit-hodContact" class="form-control" maxlength="100"/></div>
+              <div style="display:flex;gap:10px;">
+                <button class="btn btn-success" onclick="saveProfile()" id="save-profile-btn">💾 Save Changes</button>
+                <button class="btn btn-outline" onclick="cancelEdit()">Cancel</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <div style="padding: 24px; text-align: center; color: var(--text-muted); font-size: 0.85rem; border-top: 1px solid var(--border); margin-top: 30px;">
+      @2024 collage workshop .all rights reserved
+    </div>
+  </main>
+</div>
+
+<!-- ─── REGISTRATION + QR PAYMENT MODAL ─── -->
+<div class="modal-overlay" id="reg-pay-modal">
+  <div class="modal" style="max-width:560px;">
+    <div class="modal-header">
+      <h3 id="rp-modal-title">🎓 Register &amp; Pay</h3>
+      <button class="modal-close" onclick="closeRegModal()">✕</button>
+    </div>
+    <div class="modal-body">
+
+      <!-- STEP 1: Student + Workshop Details -->
+      <div id="rp-step1">
+        <div style="font-size:0.8rem;font-weight:700;color:var(--text-muted);margin-bottom:8px;">📋 AUTO-FILLED FROM YOUR PROFILE</div>
+        <div class="reg-details-grid">
+          <div class="reg-det-item"><label>Full Name</label><div class="val" id="rp-name">—</div></div>
+          <div class="reg-det-item"><label>Email</label><div class="val" id="rp-email" style="font-size:0.8rem;">—</div></div>
+          <div class="reg-det-item"><label>Department</label><div class="val" id="rp-dept">—</div></div>
+          <div class="reg-det-item"><label>Phone</label><div class="val" id="rp-phone">—</div></div>
+          <div class="reg-det-item"><label>Roll Number</label><div class="val" id="rp-roll">—</div></div>
+          <div class="reg-det-item"><label>Instructor</label><div class="val" id="rp-instructor">—</div></div>
+        </div>
+        <div style="background:#f0f4fc;border-radius:10px;padding:14px;margin-bottom:16px;">
+          <div style="font-size:0.8rem;font-weight:700;color:var(--text-muted);margin-bottom:8px;">🏫 WORKSHOP DETAILS</div>
+          <div style="font-size:1rem;font-weight:800;color:var(--primary);margin-bottom:4px;" id="rp-ws-title">—</div>
+          <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:2px;">📍 <span id="rp-venue">—</span></div>
+          <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:2px;">📅 <span id="rp-dates">—</span></div>
+          <div style="display:flex;align-items:center;gap:12px;margin-top:8px;">
+            <div style="font-size:1.4rem;font-weight:800;color:var(--success);" id="rp-fee">₹ 0</div>
+            <div class="slot-info" style="flex:1;">
+              <span id="rp-seats" style="font-size:0.75rem;color:var(--text-muted);white-space:nowrap;"></span>
+              <div class="slot-bar"><div class="slot-fill" id="rp-slot-fill" style="width:0%"></div></div>
+            </div>
+          </div>
+        </div>
+        <div id="rp-team-section" style="display:none; background:#f0f4fc;border-radius:10px;padding:14px;margin-bottom:16px;">
+          <div style="font-size:0.8rem;font-weight:700;color:var(--text-muted);margin-bottom:8px;">👥 TEAM REGISTRATION</div>
+          <label class="form-label" style="font-size:0.8rem;">Number of Team Members (Max: <span id="rp-max-team"></span>)</label>
+          <select id="rp-team-size-select" class="form-control" onchange="updateTeamFields()">
+            <option value="1">1 (Just me)</option>
+          </select>
+          <div id="rp-team-fields" style="margin-top:12px;display:grid;gap:10px;"></div>
+        </div>
+        <div id="rp-error" class="alert alert-error" style="display:none;"></div>
+        <div style="display:flex;gap:10px;">
+          <button class="btn btn-outline" onclick="closeRegModal()" style="flex:1;">Cancel</button>
+          <button class="btn btn-primary" id="rp-proceed-btn" onclick="proceedToPayment()" style="flex:2;">Proceed to Payment →</button>
+        </div>
+      </div>
+
+      <!-- STEP 2: QR Payment -->
+      <div id="rp-step2" style="display:none;">
+        <div class="pay-method-qr">Scan the QR code below using any UPI app to pay</div>
+        <div class="qr-wrapper">
+          <div class="qr-title">📱 UPI QR Code Payment</div>
+          <img id="qr-img" src="" alt="QR Code" width="200" height="200"/>
+          <div class="qr-upi-text" id="qr-upi-text">workshop@ybl</div>
+          <div style="margin-top:12px;font-size:0.85rem;font-weight:800;color:var(--success);">Amount: <span id="qr-amount">₹ 0</span></div>
+        </div>
+
+        <!-- 5-second countdown -->
+        <div style="text-align:center;">
+          <div style="font-size:0.82rem;color:var(--text-muted);margin-bottom:4px;">Auto-confirming payment in</div>
+          <div class="countdown-ring">
+            <svg viewBox="0 0 64 64" width="64" height="64">
+              <circle cx="32" cy="32" r="29"/>
+              <circle class="prog" id="cd-circle" cx="32" cy="32" r="29" stroke-dasharray="182" stroke-dashoffset="0"/>
+            </svg>
+            <div class="num" id="cd-num">5</div>
+          </div>
+          <div id="paying-status" style="font-size:0.78rem;color:var(--text-muted);">Waiting for payment scan…</div>
+        </div>
+      </div>
+
+      <!-- STEP 3: Success -->
+      <div id="rp-step3" style="display:none;text-align:center;padding:20px 0;">
+        <div style="font-size:3.5rem;" class="pay-success-anim">✅</div>
+        <h3 style="color:var(--success);margin:10px 0 4px;">Payment Confirmed!</h3>
+        <p style="color:var(--text-muted);font-size:0.875rem;margin-bottom:16px;">Your seat is booked. You'll receive a confirmation from admin shortly.</p>
+        <p style="text-align:center;color:rgba(255,255,255,0.5);font-size:0.75rem;margin-top:20px;">@2024 collage workshop .all rights reserved</p>
+        <div class="txn-box" id="txn-display"></div>
+        <div class="reg-details-grid" style="margin-top:16px;" id="success-summary"></div>
+        <button class="btn btn-primary btn-full" style="margin-top:16px;" onclick="closeRegModal();showTab('myworkshops');">View My Registrations →</button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+  </div>
+</div>
+
+<!-- Change Password Modal -->
+<div class="modal-overlay" id="password-modal">
+  <div class="modal" style="max-width:400px;">
+    <div class="modal-header">
+      <h3>🔑 Change Password</h3>
+      <button class="modal-close" onclick="closeModal('password-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="pass-error" class="alert alert-error" style="display:none;"></div>
+      <div class="form-group">
+        <label class="form-label">Current Password</label>
+        <input type="password" id="pass-current" class="form-control" placeholder="••••••••"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">New Password</label>
+        <input type="password" id="pass-new" class="form-control" placeholder="••••••••"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Confirm New Password</label>
+        <input type="password" id="pass-confirm" class="form-control" placeholder="••••••••"/>
+      </div>
+      <div class="modal-footer" style="border:none;padding:10px 0 0; display:flex; gap:10px;">
+        <button class="btn btn-outline" onclick="closeModal('password-modal')">Cancel</button>
+        <button class="btn btn-success" id="pass-save-btn" onclick="doChangePassword()">Update Password</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TICKET MODAL -->
+<div class="modal-overlay" id="ticket-modal">
+  <div class="modal" style="max-width:500px;">
+    <div class="modal-header">
+      <h3>🎟️ Your Event Ticket</h3>
+      <button class="modal-close" onclick="closeModal('ticket-modal')">✕</button>
+    </div>
+    <div class="modal-body" id="ticket-content" style="text-align:center;">
+      <!-- Dynamic Ticket content -->
+    </div>
+    <div class="modal-footer" style="padding:15px; border-top:1px solid var(--border-color); display:flex; gap:10px;">
+      <button class="btn btn-outline btn-full" onclick="window.print()">🖨️ Print Ticket</button>
+      <button class="btn btn-primary btn-full" onclick="closeModal('ticket-modal')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Cancel Registration Modal -->
+<div class="modal-overlay" id="cancel-modal">
+  <div class="modal" style="max-width:400px;">
+    <div class="modal-header">
+      <h3 style="color:var(--danger);">✕ Cancel Registration</h3>
+      <button class="modal-close" onclick="closeModal('cancel-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="margin-bottom:15px;">Are you sure you want to cancel your registration for <strong id="cancel-ws-title"></strong>?</p>
+      <div class="alert alert-warning" style="font-size:0.85rem;">This will free up the seat for other students.</div>
+      <div class="modal-footer" style="border:none;padding:16px 0 0; display:flex; gap:10px;">
+        <button class="btn btn-outline" onclick="closeModal('cancel-modal')">No, Keep it</button>
+        <button class="btn btn-danger" id="cancel-confirm-btn" onclick="doCancel()">Yes, Cancel registration</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/js/app.js"></script>
+<script>
+let allWorkshops=[], myRegisteredIds=[], currentProfile={}, regIdToCancel=null, countdownTimer=null, currentWsForReg=null, allStudents=[];
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded',()=>{
+  if(!requireAuth('STUDENT'))return;
+  const name=getFullName()||'Student';
+  document.getElementById('sidebar-name').textContent=name;
+  document.getElementById('sidebar-avatar').textContent=getInitials(name);
+  Promise.all([
+    loadProfile(true), 
+    loadMyRegisteredIds(),
+    apiFetch('GET','/api/auth/students').then(r=>allStudents=r).catch(e=>allStudents=[])
+  ]).then(()=>loadWorkshops());
+});
+
+// ── Tabs ──────────────────────────────────────────────────────────────────────
+function showTab(tab){
+  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('tab-'+tab).classList.add('active');
+  document.getElementById('nav-'+tab).classList.add('active');
+  
+  const titles={browse:'Browse Workshops',myworkshops:'My Registrations',profile:'My Profile'};
+  document.getElementById('topbar-title').textContent=titles[tab]||'Dashboard';
+  if(tab==='myworkshops')loadMyRegistrations();
+  if(tab==='profile')loadProfile(false);
+}
+
+function toggleSidebar() {
+  const sb = document.querySelector('.sidebar');
+  const ov = document.getElementById('sidebar-overlay');
+  if (sb) sb.classList.toggle('open');
+  if (ov) ov.classList.toggle('active');
+}
+
+// Close sidebar on navigation (mobile)
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', () => {
+    if (window.innerWidth <= 768) {
+      const sb = document.querySelector('.sidebar');
+      const ov = document.getElementById('sidebar-overlay');
+      if (sb) sb.classList.remove('open');
+      if (ov) ov.classList.remove('active');
+    }
+  });
+});
+
+// ── Profile ───────────────────────────────────────────────────────────────────
+async function loadProfile(silent=false){
+  try{
+    currentProfile=await apiFetch('GET','/api/student/profile');
+    const p=currentProfile;
+    document.getElementById('sidebar-avatar').textContent=getInitials(p.fullName);
+    document.getElementById('sidebar-name').textContent=p.fullName;
+    if(!silent){
+      document.getElementById('profile-avatar').textContent=getInitials(p.fullName);
+      document.getElementById('profile-name').textContent=p.fullName;
+      document.getElementById('profile-email').textContent=p.email;
+      document.getElementById('profile-spent').textContent=formatCurrency(p.totalAmountSpent || 0);
+      document.getElementById('profile-info-grid').innerHTML=`
+        <div class="info-item"><label>Phone</label><div class="info-value">${p.phone||'—'}</div></div>
+        <div class="info-item"><label>Department</label><div class="info-value">${p.department||'—'}</div></div>
+        <div class="info-item"><label>Roll Number</label><div class="info-value">${p.rollNumber||'—'}</div></div>
+        <div class="info-item"><label>Address</label><div class="info-value">${p.address||'—'}</div></div>
+        <div class="info-item"><label>HOD Contact</label><div class="info-value">${p.hodContact||'—'}</div></div>
+        <div class="info-item"><label>Member Since</label><div class="info-value">${formatDateShort(p.createdAt)}</div></div>`;
+    }
+  }catch(e){if(!silent)showToast(e.message,'error');}
+}
+function enableEdit(){
+  const p=currentProfile;
+  document.getElementById('edit-fullName').value=p.fullName||'';
+  document.getElementById('edit-phone').value=p.phone||'';
+  document.getElementById('edit-department').value=p.department||'';
+  document.getElementById('edit-rollNumber').value=p.rollNumber||'';
+  document.getElementById('edit-address').value=p.address||'';
+  document.getElementById('edit-hodContact').value=p.hodContact||'';
+  document.getElementById('profile-view').style.display='none';
+  document.getElementById('profile-edit').style.display='block';
+}
+function cancelEdit(){
+  document.getElementById('profile-view').style.display='block';
+  document.getElementById('profile-edit').style.display='none';
+}
+async function saveProfile(){
+  const btn=document.getElementById('save-profile-btn');
+  const errEl=document.getElementById('profile-edit-error');
+  errEl.style.display='none'; showSpinner(btn);
+  try{
+    await apiFetch('PUT','/api/student/profile',{
+      fullName:document.getElementById('edit-fullName').value,
+      phone:document.getElementById('edit-phone').value,
+      department:document.getElementById('edit-department').value,
+      rollNumber:document.getElementById('edit-rollNumber').value,
+      address:document.getElementById('edit-address').value,
+      hodContact:document.getElementById('edit-hodContact').value
+    });
+    showToast('Profile updated!','success'); cancelEdit();
+    loadProfile(false);
+    localStorage.setItem('fullName',document.getElementById('edit-fullName').value);
+    document.getElementById('sidebar-name').textContent=document.getElementById('edit-fullName').value;
+  }catch(err){errEl.textContent=err.message||'Update failed.';errEl.style.display='block';hideSpinner(btn);}
+}
+
+// ── Workshops ─────────────────────────────────────────────────────────────────
+async function loadMyRegisteredIds(){
+  try{const r=await apiFetch('GET','/api/student/my-workshops');myRegisteredIds=r.map(x=>x.workshopId);}
+  catch(e){myRegisteredIds=[];}
+}
+async function loadWorkshops(){
+  try{allWorkshops=await apiFetch('GET','/api/workshops');renderWorkshops(allWorkshops);}
+  catch(e){document.getElementById('workshops-grid').innerHTML=`<div class="empty-state" style="grid-column:1/-1;"><div class="empty-icon">⚠️</div><div class="empty-message">${e.message}</div></div>`;}
+}
+function filterWorkshops(){
+  const q=document.getElementById('ws-search').value.toLowerCase();
+  const cat=document.getElementById('ws-category').value;
+  const status=document.getElementById('ws-status').value;
+  renderWorkshops(allWorkshops.filter(w=>
+    (!q||w.title.toLowerCase().includes(q)||(w.instructor&&w.instructor.toLowerCase().includes(q)))&&
+    (!cat||w.category===cat)&&(!status||w.status===status)));
+}
+function renderWorkshops(ws){
+  const g=document.getElementById('workshops-grid');
+  if(!ws.length){g.innerHTML='<div class="empty-state" style="grid-column:1/-1;"><div class="empty-icon">🎓</div><div class="empty-message">No workshops found</div></div>';return;}
+  g.innerHTML=ws.map(w=>{
+    const isReg=myRegisteredIds.includes(w.id);
+    const full=w.seatsAvailable===0;
+    const pct=Math.round(((w.capacity-w.seatsAvailable)/w.capacity)*100);
+    let seatsBadge=full
+      ? '<div class="seats-badge full">🔴 Full</div>'
+      : w.seatsAvailable<=4
+      ? `<div class="seats-badge limited">🟡 Only ${w.seatsAvailable} left!</div>`
+      : `<div class="seats-badge available">🟢 ${w.seatsAvailable}/${w.capacity} seats</div>`;
+    let btn=isReg
+      ? '<div class="registered-check">✅ Registered</div>'
+      : full
+      ? '<button class="btn btn-outline btn-full" disabled>Workshop Full</button>'
+      : `<button class="btn btn-primary btn-full" onclick="openRegModal(${w.id})">Register &amp; Pay</button>`;
+    return `<div class="workshop-card">
+      <div class="workshop-card-header"><span class="category-badge ${getCategoryClass(w.category)}">${w.category||'General'}</span></div>
+      <div class="workshop-card-body">
+        <h3 class="workshop-title">${w.title}</h3>
+        <div class="workshop-meta">
+          <div class="workshop-meta-item"><span class="meta-icon">👨‍🏫</span><span>${w.instructor}</span></div>
+          <div class="workshop-meta-item"><span class="meta-icon">📅</span><span>${formatDateShort(w.startDate)} – ${formatDateShort(w.endDate)}</span></div>
+          <div class="workshop-meta-item"><span class="meta-icon">📍</span><span>${w.venue}</span></div>
+        </div>
+        <div class="workshop-fee">${formatCurrency(w.fee)}</div>
+        ${seatsBadge}
+        <div class="slot-info" style="margin-top:6px;">
+          <span style="font-size:0.7rem;color:var(--text-muted);">${w.capacity-w.seatsAvailable}/${w.capacity} filled</span>
+          <div class="slot-bar"><div class="slot-fill" style="width:${pct}%"></div></div>
+        </div>
+        <span class="badge ${getBadgeClass(w.status)}">${w.status}</span>
+        
+        ${w.coordinatorName ? `
+          <div style="margin-top:12px; padding-top:12px; border-top:1px dashed var(--border-color);">
+            <div style="font-size:0.75rem; font-weight:700; color:var(--text-muted); margin-bottom:6px; display:flex; align-items:center; gap:5px;">
+              <span>📞 COORDINATOR:</span> <span style="color:var(--text-main);">${w.coordinatorName}</span>
+            </div>
+            <div style="display:flex; gap:8px;">
+              ${w.coordinatorPhone ? `<a href="tel:${w.coordinatorPhone}" class="btn btn-outline" style="padding:4px 8px; font-size:0.7rem; flex:1; text-decoration:none; text-align:center;">📞 Call</a>` : ''}
+              ${w.coordinatorEmail ? `<a href="mailto:${w.coordinatorEmail}" class="btn btn-outline" style="padding:4px 8px; font-size:0.7rem; flex:1; text-decoration:none; text-align:center;">✉️ Email</a>` : ''}
+            </div>
+          </div>
+        ` : ''}
+      </div>
+      <div class="workshop-card-footer">${btn}</div>
+    </div>`;
+  }).join('');
+}
+
+// ── Register + QR Payment Modal ───────────────────────────────────────────────
+function openRegModal(wsId){
+  const w=allWorkshops.find(x=>x.id===wsId); if(!w)return;
+  currentWsForReg=w;
+  // Auto-fill student details
+  const p=currentProfile;
+  document.getElementById('rp-name').textContent=p.fullName||getFullName()||'—';
+  document.getElementById('rp-email').textContent=p.email||'—';
+  document.getElementById('rp-dept').textContent=p.department||'—';
+  document.getElementById('rp-phone').textContent=p.phone||'—';
+  document.getElementById('rp-roll').textContent=p.rollNumber||'—';
+  document.getElementById('rp-instructor').textContent=w.instructor;
+  // Workshop details
+  document.getElementById('rp-modal-title').textContent='🎓 '+w.title;
+  document.getElementById('rp-ws-title').textContent=w.title;
+  document.getElementById('rp-venue').textContent=w.venue;
+  document.getElementById('rp-dates').textContent=`${formatDateShort(w.startDate)} → ${formatDateShort(w.endDate)}`;
+  document.getElementById('rp-fee').textContent=formatCurrency(w.fee);
+  const pct=Math.round(((w.capacity-w.seatsAvailable)/w.capacity)*100);
+  document.getElementById('rp-seats').textContent=`${w.seatsAvailable} seats left`;
+  document.getElementById('rp-slot-fill').style.width=pct+'%';
+
+  // Setup Team Selection
+  const maxTeam=Math.min(w.teamSize||1, w.seatsAvailable);
+  const tSec=document.getElementById('rp-team-section'), tSel=document.getElementById('rp-team-size-select');
+  if(maxTeam>1){
+    document.getElementById('rp-max-team').textContent=maxTeam;
+    let opts='';
+    for(let i=1;i<=maxTeam;i++) opts+=`<option value="${i}">${i} ${i===1?'(Just me)':'Members'}</option>`;
+    tSel.innerHTML=opts;
+    tSel.value=1;
+    tSec.style.display='block';
+    updateTeamFields();
+  }else{
+    tSel.innerHTML='<option value="1">1</option>';
+    tSec.style.display='none';
+    document.getElementById('rp-fee').textContent=formatCurrency(w.fee);
+  }
+
+  document.getElementById('rp-error').style.display='none';
+  // Show step 1
+  document.getElementById('rp-step1').style.display='block';
+  document.getElementById('rp-step2').style.display='none';
+  document.getElementById('rp-step3').style.display='none';
+  document.getElementById('reg-pay-modal').classList.add('open');
+}
+
+function updateTeamFields(){
+  const size=parseInt(document.getElementById('rp-team-size-select').value||1);
+  const container=document.getElementById('rp-team-fields');
+  const w=currentWsForReg;
+  if(size>1){
+    let html='';
+    let opts = '<option value="">-- Select Teammate --</option>';
+    allStudents.forEach(s => {
+       if (s.email !== currentProfile.email && s.rollNumber) {
+           opts += `<option value="${s.rollNumber}" data-name="${s.fullName}">${s.fullName} (${s.rollNumber})</option>`;
+       }
+    });
+
+    for(let i=1;i<size;i++){
+      html+=`<div style="display:flex;gap:10px;align-items:center;">
+        <span style="font-size:0.8rem;background:#dbeafe;color:#1e40af;padding:4px 8px;border-radius:6px;font-weight:700;">#${i+1}</span>
+        <select class="form-control tm-select" style="flex:1" required>
+           ${opts}
+        </select>
+      </div>`;
+    }
+    container.innerHTML=html;
+  }else{
+    container.innerHTML='';
+  }
+  document.getElementById('rp-fee').textContent=formatCurrency((w.fee||0)*size);
+}
+
+async function proceedToPayment(){
+  const btn=document.getElementById('rp-proceed-btn');
+  const errEl=document.getElementById('rp-error');
+  errEl.style.display='none';
+  showSpinner(btn);
+
+  // Build Team JSON Data
+  const teamSize=parseInt(document.getElementById('rp-team-size-select').value||1);
+  let teamMembersList=[];
+  if(teamSize>1){
+     const selects=Array.from(document.querySelectorAll('.tm-select'));
+     for(let i=0;i<selects.length;i++){
+       if(!selects[i].value){ errEl.textContent='Please select all team members.'; errEl.style.display='block'; hideSpinner(btn); return; }
+       
+       if (teamMembersList.find(x => x.rollNumber === selects[i].value)) {
+           errEl.textContent='Duplicate team members selected.'; errEl.style.display='block'; hideSpinner(btn); return;
+       }
+       
+       const opt = selects[i].options[selects[i].selectedIndex];
+       const name = opt.getAttribute('data-name');
+       teamMembersList.push({name: name, rollNumber: selects[i].value});
+     }
+  }
+  const totalFee=(currentWsForReg.fee||0)*teamSize;
+  currentWsForReg._tempFee=totalFee; // Save for QR
+
+  try{
+    // Step 1: Register
+    const regData=await apiFetch('POST',`/api/student/register/${currentWsForReg.id}`, {
+       teamMembersCount: teamSize,
+       teamMembersList: teamMembersList
+    });
+    const regId=regData.registrationId;
+
+    // Show QR step
+    document.getElementById('rp-step1').style.display='none';
+    document.getElementById('rp-step2').style.display='block';
+    hideSpinner(btn);
+
+    // Generate QR code using qrserver.com API with UPI deep link
+    const upiLink=`upi://pay?pa=workshop@ybl&pn=Workshop+Portal&am=${totalFee}&cu=INR&tn=Reg${regId}`;
+    const qrUrl=`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(upiLink)}`;
+    document.getElementById('qr-img').src=qrUrl;
+    document.getElementById('qr-upi-text').textContent=`workshop@ybl | Ref#${regId}`;
+    document.getElementById('qr-amount').textContent=formatCurrency(totalFee);
+
+    // Start 5-second countdown
+    startCountdown(regId, teamSize);
+  }catch(err){
+    errEl.textContent=err.message||'Registration failed.';
+    errEl.style.display='block';
+    hideSpinner(btn);
+  }
+}
+
+function startCountdown(regId, teamSize){
+  let secs=5;
+  const numEl=document.getElementById('cd-num');
+  const circleEl=document.getElementById('cd-circle');
+  const statusEl=document.getElementById('paying-status');
+  const circ=182; // 2πr ≈ 2×3.14159×29
+  circleEl.style.strokeDashoffset='0';
+  numEl.textContent=secs;
+  if(countdownTimer)clearInterval(countdownTimer);
+  countdownTimer=setInterval(async()=>{
+    secs--;
+    numEl.textContent=secs;
+    const offset=circ*(1-(secs/5));
+    circleEl.style.strokeDashoffset=offset;
+    if(secs===3) statusEl.textContent='Payment received, processing…';
+    if(secs===0){
+      clearInterval(countdownTimer);
+      statusEl.textContent='✅ Payment successful!';
+      try{
+        // Step 2: Process payment via UPI method
+        const payData=await apiFetch('POST',`/api/student/payment/${regId}`,{paymentMethod:'UPI',upiId:'workshop@ybl'});
+        // Update workshop seats in local array
+        const wi=allWorkshops.findIndex(x=>x.id===currentWsForReg.id);
+        if(wi>=0) allWorkshops[wi].seatsAvailable=Math.max(0,allWorkshops[wi].seatsAvailable-teamSize);
+        myRegisteredIds.push(currentWsForReg.id);
+          // Show success step
+          document.getElementById('rp-step2').style.display='none';
+          document.getElementById('rp-step3').style.display='block';
+          document.getElementById('txn-display').innerHTML=`<strong>Transaction ID:</strong> ${payData.transactionId}<br><strong>Status:</strong> ✅ SUCCESS`;
+          document.getElementById('success-summary').innerHTML=`
+            <div class="reg-det-item"><label>Workshop</label><div class="val">${currentWsForReg.title}</div></div>
+            <div class="reg-det-item"><label>Amount Paid</label><div class="val">${formatCurrency(currentWsForReg._tempFee||currentWsForReg.fee)}</div></div>
+            <div class="reg-det-item"><label>Student${teamSize>1?' (Lead)':''}</label><div class="val">${currentProfile.fullName||getFullName()}</div></div>
+            <div class="reg-det-item"><label>Reg ID</label><div class="val">#${regId}</div></div>`;
+          showConfetti();
+          
+          // AUTO-SHOW TICKET
+          setTimeout(() => {
+            closeRegModal();
+            showTicket({...currentWsForReg, registrationId: regId, teamMembersCount: teamSize, teamMembers: JSON.stringify(teamMembersList), paymentStatus: 'SUCCESS'});
+          }, 3000);
+      }catch(pe){
+        statusEl.textContent='⚠️ Payment error: '+pe.message;
+      }
+    }
+  },1000);
+}
+
+function closeRegModal(){
+  if(countdownTimer)clearInterval(countdownTimer);
+  document.getElementById('reg-pay-modal').classList.remove('open');
+}
+
+// ── My Registrations ──────────────────────────────────────────────────────────
+async function loadMyRegistrations(){
+  const el=document.getElementById('my-reg-list');
+  el.innerHTML='<div class="loading-overlay"><span class="spinner"></span></div>';
+  try{
+    const regs=await apiFetch('GET','/api/student/my-workshops');
+    const activeRegs = regs.filter(r => r.registrationStatus !== 'CANCELLED');
+    if(!activeRegs.length){
+      el.innerHTML='<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-message">No active registrations</div><div class="empty-sub">Browse workshops and register!</div></div>';
+      return;
+    }
+    el.innerHTML=activeRegs.map(r=>{
+      const payStatus=r.paymentStatus||'NOT_PAID';
+      const isPaid=payStatus==='SUCCESS';
+      const isCancelled=r.registrationStatus==='CANCELLED';
+      let borderColor=isCancelled?'var(--danger)':isPaid?'var(--success)':'var(--warning)';
+      let actions='';
+      if(!isCancelled){
+        if(!isPaid){
+          actions+=`<button class="btn btn-success btn-sm" onclick="openPayForReg(${r.registrationId},${r.fee},'${(r.workshopTitle||'').replace(/'/g,"\\'")}')">💳 Pay Now</button> `;
+          actions+=`<button class="btn btn-danger btn-sm" onclick="openCancelModal(${r.registrationId},'${(r.workshopTitle||'').replace(/'/g,"\\'")}')">✕ Cancel</button>`;
+        }else{
+          actions=`<span style="color:var(--success);font-weight:700;margin-right:12px;">✅ Paid</span>`;
+          actions+=`<button class="btn btn-primary btn-sm" onclick='showTicket(${JSON.stringify(r)})'>🎟️ View Ticket</button> `;
+          actions+=`<button class="btn btn-outline btn-sm" style="border-color:var(--warning);color:var(--warning);" onclick="processRefund(${r.registrationId},'${(r.workshopTitle||'').replace(/'/g,"\\'")}')">💸 Refund</button>`;
+        }
+      }else{actions='<span style="color:var(--text-muted);">Cancelled</span>';}
+      return `<div class="my-reg-card" style="border-left-color:${borderColor};">
+        <div class="my-reg-title">${r.workshopTitle} ${r.teamMembersCount>1?`<span class="badge badge-primary">👥 ${r.teamMembersCount} Team Members</span>`:''}</div>
+        <div class="my-reg-meta">
+          <span>📍 ${r.venue||''}</span>
+          <span>📅 ${formatDateShort(r.startDate)} → ${formatDateShort(r.endDate)}</span>
+          <span>💰 ${formatCurrency(r.fee)}</span>
+        </div>
+        <div class="my-reg-footer">
+          <div style="display:flex;gap:8px;align-items:center;">
+            <span class="badge ${getBadgeClass(r.registrationStatus)}">${r.registrationStatus}</span>
+            <span class="badge ${getBadgeClass(payStatus)}">${payStatus.replace('_',' ')}</span>
+            ${r.transactionId?`<code style="font-size:0.72rem;color:var(--text-muted);">${r.transactionId}</code>`:''}
+          </div>
+          <div>${actions}</div>
+        </div>
+      </div>`;
+    }).join('');
+  }catch(e){el.innerHTML=`<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-message">${e.message}</div></div>`;}
+}
+
+// Pay Now for existing registration (manual payment modal)
+function openPayForReg(regId,fee,title){
+  // Reuse QR flow for already-registered but unpaid registrations
+  currentWsForReg={id:null,title,fee};
+  document.getElementById('rp-modal-title').textContent='💳 Pay for: '+title;
+  document.getElementById('rp-step1').style.display='none';
+  document.getElementById('rp-step2').style.display='block';
+  document.getElementById('rp-step3').style.display='none';
+  const upiLink=`upi://pay?pa=workshop@ybl&pn=Workshop+Portal&am=${fee}&cu=INR&tn=Reg${regId}`;
+  const qrUrl=`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(upiLink)}`;
+  document.getElementById('qr-img').src=qrUrl;
+  document.getElementById('qr-upi-text').textContent=`workshop@ybl | Ref#${regId}`;
+  document.getElementById('qr-amount').textContent=formatCurrency(fee);
+  document.getElementById('reg-pay-modal').classList.add('open');
+  startPayOnlyCountdown(regId,fee,title);
+}
+
+function startPayOnlyCountdown(regId,fee,title){
+  let secs=5;
+  const numEl=document.getElementById('cd-num');
+  const circleEl=document.getElementById('cd-circle');
+  const statusEl=document.getElementById('paying-status');
+  const circ=182;
+  circleEl.style.strokeDashoffset='0';
+  numEl.textContent=secs;
+  if(countdownTimer)clearInterval(countdownTimer);
+  countdownTimer=setInterval(async()=>{
+    secs--;
+    numEl.textContent=secs;
+    circleEl.style.strokeDashoffset=circ*(1-(secs/5));
+    if(secs===3) statusEl.textContent='Payment received, processing…';
+    if(secs===0){
+      clearInterval(countdownTimer);
+      try{
+        const pd=await apiFetch('POST',`/api/student/payment/${regId}`,{paymentMethod:'UPI',upiId:'workshop@ybl'});
+        document.getElementById('rp-step2').style.display='none';
+        document.getElementById('rp-step3').style.display='block';
+        document.getElementById('txn-display').innerHTML=`<strong>Transaction ID:</strong> ${pd.transactionId}<br><strong>Status:</strong> ✅ SUCCESS`;
+        document.getElementById('success-summary').innerHTML=`
+          <div class="reg-det-item"><label>Workshop</label><div class="val">${title}</div></div>
+          <div class="reg-det-item"><label>Amount Paid</label><div class="val">${formatCurrency(fee)}</div></div>`;
+        showConfetti();
+      }catch(pe){statusEl.textContent='⚠️ '+pe.message;}
+    }
+  },1000);
+}
+
+// ── Cancel ────────────────────────────────────────────────────────────────────
+function openCancelModal(regId,title){
+  regIdToCancel=regId;
+  document.getElementById('cancel-ws-title').textContent=title;
+  document.getElementById('cancel-modal').classList.add('open');
+}
+async function doCancel(){
+  const btn=document.getElementById('cancel-confirm-btn');
+  showSpinner(btn);
+  try{
+    await apiFetch('DELETE',`/api/student/cancel/${regIdToCancel}`);
+    showToast('Registration cancelled. Seat freed.','success');
+    closeModal('cancel-modal');
+    myRegisteredIds=myRegisteredIds.filter(i=>i!==regIdToCancel);
+    loadMyRegistrations();
+    loadWorkshops();
+  }catch(e){showToast(e.message,'error');hideSpinner(btn);}
+}
+
+async function processRefund(regId, title) {
+  if(!confirm(`Are you sure you want to cancel and refund your payment for ${title}?`)) return;
+  
+  // Create a simulated loading modal for the refund check
+  const modalHTML = `
+    <div class="modal-overlay open" id="refund-loading-modal" style="z-index:9999;">
+      <div class="modal" style="text-align:center;padding:40px 20px;">
+        <div class="spinner" style="width:40px;height:40px;margin:0 auto 16px;"></div>
+        <h3 style="color:var(--primary);margin-bottom:8px;">Processing Refund...</h3>
+        <p style="color:var(--text-muted);font-size:0.9rem;" id="refund-status-text">Checking payment status in database...</p>
+      </div>
+    </div>`;
+  document.body.insertAdjacentHTML('beforeend', modalHTML);
+
+  try {
+    // Simulate 1.5s delay for DB check / UPI processing
+    await new Promise(r => setTimeout(r, 1500));
+    document.getElementById('refund-status-text').textContent = 'Initiating UPI refund...';
+    await new Promise(r => setTimeout(r, 1000));
+
+    // Call actual backend refund API
+    const data = await apiFetch('POST', `/api/student/refund/${regId}`);
+    
+    // Cleanup processing modal
+    document.getElementById('refund-loading-modal').remove();
+    
+    // Show success
+    showToast(data.message || 'Refund successful! Amount sent to UPI.', 'success');
+    myRegisteredIds = myRegisteredIds.filter(i => i !== regId);
+    loadMyRegistrations();
+    loadWorkshops();
+  } catch(e) {
+    const el = document.getElementById('refund-loading-modal');
+    if(el) el.remove();
+    showToast(e.message || 'Refund failed.', 'error');
+  }
+}
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+
+function showTicket(reg){
+  const container = document.getElementById('ticket-content');
+  const mainQrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=REG-${reg.registrationId}`;
+  
+  let teamQrsHtml = '';
+  if(reg.teamMembersCount > 1 && reg.teamMembers){
+    try {
+      const members = JSON.parse(reg.teamMembers);
+      teamQrsHtml = `<div style="margin-top:20px; border-top:1px dashed var(--border); padding-top:20px;">
+        <h4 style="margin-bottom:15px; font-size:1rem; color:var(--primary);">👥 Team Member Tickets</h4>
+        <div style="display:flex; flex-direction:column; gap:25px;">
+          ${members.map((m, idx) => {
+            const memberQr = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=REG-${reg.registrationId}-T${idx+1}`;
+            return `
+              <div style="background:#f8fafc; padding:15px; border-radius:12px; border:1px solid var(--border);">
+                <div style="font-weight:700; margin-bottom:10px;">${m.name}</div>
+                <img src="${memberQr}" style="width:140px; height:140px; margin-bottom:8px;">
+                <div style="font-size:0.75rem; color:var(--text-muted); font-family:monospace;">TM-${reg.registrationId}-${idx+1}</div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>`;
+    } catch(e) { console.error("JSON parse error", e); }
+  }
+
+  container.innerHTML = `
+    <div style="background:var(--white); border:2px dashed var(--primary); padding:20px; border-radius:12px; margin-bottom:15px;">
+      <h3 style="margin-bottom:5px; color:var(--primary);">${reg.workshopTitle || reg.title}</h3>
+      <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:20px;">📍 ${reg.venue} | 📅 ${formatDateShort(reg.startDate)}</p>
+      
+      <div style="padding:15px; background:#fff; display:inline-block; border-radius:12px; box-shadow:0 4px 15px rgba(0,0,0,0.08); margin-bottom:15px;">
+        <div style="font-size:0.8rem; font-weight:700; color:var(--text-muted); margin-bottom:10px; text-transform:uppercase;">Entry Pass (Lead)</div>
+        <img src="${mainQrUrl}" alt="Ticket QR" style="width:180px; height:180px; display:block;">
+      </div>
+      
+      <div style="font-size:1.1rem; font-weight:800; color:var(--primary);">#REG-${reg.registrationId}</div>
+      <div style="font-size:0.8rem; color:var(--text-muted); font-weight:600;">Show this at the entrance</div>
+      
+      ${reg.attended ? `<div style="margin-top:15px; padding:8px; background:var(--success-light); color:var(--success); font-weight:700; border-radius:8px;">✅ ATTENDED</div>` : ''}
+    </div>
+
+    ${teamQrsHtml}
+    
+    <div style="background:#fdf2f2; padding:12px; border-radius:8px; margin-top:15px; font-size:0.8rem; color:#991b1b; text-align:left;">
+      <strong>Important Notice:</strong> Each team member should keep their respective QR code ready for verification. Timing starts once the lead checks in.
+    </div>
+  `;
+  document.getElementById('ticket-modal').classList.add('open');
+}
+
+function openChangePasswordModal(){
+  document.getElementById('pass-error').style.display='none';
+  document.getElementById('pass-current').value='';
+  document.getElementById('pass-new').value='';
+  document.getElementById('pass-confirm').value='';
+  document.getElementById('password-modal').classList.add('open');
+}
+
+async function doChangePassword(){
+  const cur=document.getElementById('pass-current').value;
+  const n1=document.getElementById('pass-new').value;
+  const n2=document.getElementById('pass-confirm').value;
+  const btn=document.getElementById('pass-save-btn');
+  const errEl=document.getElementById('pass-error');
+  
+  if(!cur || !n1 || !n2){ showToast('All fields are required','warning'); return; }
+  if(n1!==n2){ errEl.textContent='Passwords do not match'; errEl.style.display='block'; return; }
+  
+  showSpinner(btn);
+  try{
+    await apiFetch('PUT','/api/student/change-password',{currentPassword:cur, newPassword:n1});
+    showToast('Password updated successfully','success');
+    closeModal('password-modal');
+  }catch(e){ errEl.textContent=e.message; errEl.style.display='block'; }
+  finally{ hideSpinner(btn); }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>College Workshop Portal — Login</title>
+  <meta name="description" content="Smart College Workshop Management System — Student and Admin access portal."/>
+  <link rel="stylesheet" href="/css/style.css"/>
+</head>
+<body>
+<div class="login-page">
+  <div class="login-container">
+    <div class="login-box">
+      <!-- Brand Header -->
+      <div class="login-brand">
+        <div class="brand-emoji">🎓</div>
+        <h1>College Workshop Portal</h1>
+        <p>Smart Workshop Management System</p>
+      </div>
+
+      <div class="login-body">
+        <!-- STEP 1: Role Selection -->
+        <div id="step-role" class="login-step active">
+          <p style="text-align:center;color:var(--text-muted);margin-bottom:18px;font-size:0.875rem;">Select your role to continue</p>
+          <div class="role-cards">
+            <div class="role-card" id="card-admin" onclick="selectRole('admin')">
+              <div class="role-icon">🛡️</div>
+              <div class="role-name">Admin</div>
+              <div class="role-desc">Manage workshops, view registrations and payments</div>
+            </div>
+            <div class="role-card" id="card-student" onclick="selectRole('student')">
+              <div class="role-icon">🎓</div>
+              <div class="role-name">Student</div>
+              <div class="role-desc">Browse workshops and manage your registrations</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- STEP 2A: Admin Login -->
+        <div id="step-admin" class="login-step">
+          <button class="step-back" onclick="showStep('role')">← Back</button>
+          <h2 class="step-title">🛡️ Admin Login</h2>
+          <div id="admin-error" class="alert alert-error" style="display:none;"></div>
+          <form id="admin-login-form" onsubmit="adminLogin(event)">
+            <div class="form-group">
+              <label class="form-label" for="admin-email">Email Address</label>
+              <input type="email" id="admin-email" class="form-control" placeholder="admin@college.edu" value="admin@college.edu" required/>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="admin-password">Password</label>
+              <input type="password" id="admin-password" class="form-control" placeholder="Enter admin password" required/>
+            </div>
+            <button type="submit" class="btn btn-primary btn-full btn-lg" id="admin-login-btn">Login as Admin</button>
+          </form>
+        </div>
+
+        <!-- STEP 2B: Student Section -->
+        <div id="step-student" class="login-step">
+          <button class="step-back" onclick="showStep('role')">← Back</button>
+          <h2 class="step-title">🎓 Student Access</h2>
+
+          <div class="student-sub-tabs">
+            <button class="student-sub-tab active" id="tab-existing" onclick="switchStudentTab('existing')">Existing Account</button>
+            <button class="student-sub-tab" id="tab-create" onclick="switchStudentTab('create')">Create Account</button>
+          </div>
+
+          <!-- Existing Account Tab -->
+          <div id="subtab-existing">
+            <div class="search-wrapper" style="margin-bottom:12px;">
+              <span class="search-icon">🔍</span>
+              <input type="text" class="search-input" id="student-search" placeholder="Search by name or department..." oninput="filterStudents(this.value)"/>
+            </div>
+            <div id="student-cards-container" class="student-cards-grid">
+              <div style="grid-column:1/-1;text-align:center;padding:24px;color:var(--text-muted);">
+                <span class="spinner spinner-dark"></span>
+                <p style="margin-top:8px;font-size:0.875rem;">Loading students...</p>
+              </div>
+            </div>
+
+            <div style="margin-top:18px;border-top:1px solid var(--border);padding-top:16px;">
+              <h3 style="font-size:0.9rem;margin-bottom:12px;color:var(--text-muted);">Student Login</h3>
+              <div id="student-login-error" class="alert alert-error" style="display:none;"></div>
+              <form id="student-login-form" onsubmit="studentLogin(event)">
+                <div class="form-group">
+                  <label class="form-label" for="student-email">Email Address</label>
+                  <input type="email" id="student-email" class="form-control" placeholder="Select a student above or type email" required/>
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="student-password">Password</label>
+                  <input type="password" id="student-password" class="form-control" placeholder="Enter password" required/>
+                </div>
+                <button type="submit" id="student-login-btn" class="btn btn-primary btn-full">Login</button>
+              </form>
+            </div>
+          </div>
+
+          <!-- Create Account Tab -->
+          <div id="subtab-create" style="display:none;">
+            <div id="register-error" class="alert alert-error" style="display:none;"></div>
+            <form id="register-form" onsubmit="studentRegister(event)">
+              <div class="form-group">
+                <label class="form-label" for="reg-fullName">Full Name *</label>
+                <input type="text" id="reg-fullName" class="form-control" placeholder="e.g. Arjun Sharma" required/>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="reg-email">Email Address *</label>
+                <input type="email" id="reg-email" class="form-control" placeholder="e.g. arjun@college.edu" required onblur="validateEmailBlur()"/>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="reg-password">Password *</label>
+                <input type="password" id="reg-password" class="form-control" placeholder="Min 8 chars, 1 uppercase, 1 digit" required oninput="onPasswordInput(this.value)"/>
+                <div class="strength-meter" id="strength-meter">
+                  <div class="strength-segment"></div>
+                  <div class="strength-segment"></div>
+                  <div class="strength-segment"></div>
+                </div>
+                <div class="strength-label" id="strength-meter-label"></div>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="reg-confirmPassword">Confirm Password *</label>
+                <div style="position:relative;">
+                  <input type="password" id="reg-confirmPassword" class="form-control" placeholder="Repeat password" required oninput="checkConfirmPassword()"/>
+                  <span id="confirm-indicator" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:0.9rem;"></span>
+                </div>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="reg-phone">Phone Number *</label>
+                <input type="tel" id="reg-phone" class="form-control" placeholder="10 digit number" maxlength="10" required/>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="reg-department">Department *</label>
+                <select id="reg-department" class="form-control" required>
+                  <option value="">— Select Department —</option>
+                  <option>Computer Science</option>
+                  <option>Electronics</option>
+                  <option>Mechanical</option>
+                  <option>Civil</option>
+                  <option>Information Technology</option>
+                  <option>Electrical</option>
+                  <option>MBA</option>
+                  <option>BCA</option>
+                  <option>MCA</option>
+                  <option>Other</option>
+                </select>
+              </div>
+                <label class="form-label" for="reg-rollNumber">Roll Number <span style="color:var(--text-muted);font-weight:400;">(optional)</span></label>
+                <input type="text" id="reg-rollNumber" class="form-control" placeholder="e.g. CS22001" maxlength="50"/>
+              </div>
+              <div class="form-group" style="flex-direction:row;align-items:center;gap:10px;margin-top:10px;">
+                <input type="checkbox" id="reg-externalUser" style="width:18px;height:18px;cursor:pointer;"/>
+                <label for="reg-externalUser" style="font-size:0.875rem;cursor:pointer;user-select:none;">I am an <strong>External Participant</strong> (Non-College)</label>
+              </div>
+              <button type="submit" id="register-btn" class="btn btn-accent btn-full">Create Account &amp; Login</button>
+            </form>
+          </div>
+        </div>
+
+      </div><!-- /login-body -->
+    </div><!-- /login-box -->
+    <p style="text-align:center;color:rgba(255,255,255,0.5);font-size:0.75rem;margin-top:20px;">@2024 collage workshop .all rights reserved</p>
+  </div>
+</div>
+
+<script src="/js/app.js"></script>
+<script>
+  let allStudents = [];
+
+  // ── Show/Hide Steps ────────────────────────────────────────────────────
+  function showStep(step) {
+    document.querySelectorAll('.login-step').forEach(el => el.classList.remove('active'));
+    document.getElementById('step-' + step).classList.add('active');
+  }
+
+  function selectRole(role) {
+    document.querySelectorAll('.role-card').forEach(c => c.classList.remove('selected'));
+    document.getElementById('card-' + role).classList.add('selected');
+    if (role === 'admin') {
+      showStep('admin');
+    } else {
+      showStep('student');
+      loadStudents();
+    }
+  }
+
+  // ── Student Sub-Tabs ───────────────────────────────────────────────────
+  function switchStudentTab(tab) {
+    document.getElementById('tab-existing').classList.toggle('active', tab === 'existing');
+    document.getElementById('tab-create').classList.toggle('active', tab === 'create');
+    document.getElementById('subtab-existing').style.display = tab === 'existing' ? 'block' : 'none';
+    document.getElementById('subtab-create').style.display = tab === 'create' ? 'block' : 'none';
+  }
+
+  // ── Load Students ──────────────────────────────────────────────────────
+  async function loadStudents() {
+    try {
+      allStudents = await apiFetch('GET', '/api/auth/students', null, false);
+      renderStudentCards(allStudents);
+    } catch(e) {
+      document.getElementById('student-cards-container').innerHTML =
+        '<div style="grid-column:1/-1;text-align:center;padding:20px;color:var(--text-muted);">Could not load students. ' + (e.message || '') + '</div>';
+    }
+  }
+
+  function renderStudentCards(students) {
+    const container = document.getElementById('student-cards-container');
+    if (!students || students.length === 0) {
+      container.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:24px;color:var(--text-muted);">
+        <div style="font-size:2rem;margin-bottom:8px;">👥</div>
+        <div style="font-weight:600;margin-bottom:4px;">No student accounts yet — create one below!</div>
+        <div style="font-size:0.8rem;">Switch to the "Create Account" tab to get started.</div>
+      </div>`;
+      return;
+    }
+    container.innerHTML = students.map((s, i) => `
+      <div class="student-card" onclick="selectStudent('${s.email}')">
+        <div class="avatar ${getAvatarColor(i)}">${getInitials(s.fullName)}</div>
+        <div class="student-card-name">${s.fullName}</div>
+        <div class="student-card-dept">${s.department || 'N/A'}</div>
+        <button class="btn btn-sm btn-outline" onclick="event.stopPropagation();selectStudent('${s.email}')">Select</button>
+      </div>
+    `).join('');
+  }
+
+  function filterStudents(query) {
+    const q = query.toLowerCase();
+    const filtered = allStudents.filter(s =>
+      s.fullName.toLowerCase().includes(q) || (s.department && s.department.toLowerCase().includes(q))
+    );
+    renderStudentCards(filtered);
+  }
+
+  function selectStudent(email) {
+    document.getElementById('student-email').value = email;
+    document.getElementById('student-password').focus();
+    showToast('Email pre-filled. Enter your password.', 'info');
+  }
+
+  // ── Admin Login ────────────────────────────────────────────────────────
+  async function adminLogin(e) {
+    e.preventDefault();
+    const btn = document.getElementById('admin-login-btn');
+    const errEl = document.getElementById('admin-error');
+    errEl.style.display = 'none';
+    showSpinner(btn);
+
+    try {
+      const data = await apiFetch('POST', '/api/auth/login', {
+        email: document.getElementById('admin-email').value,
+        password: document.getElementById('admin-password').value
+      }, false);
+
+      if (data.role !== 'ADMIN') {
+        errEl.textContent = 'This account is not an admin account.';
+        errEl.style.display = 'block';
+        hideSpinner(btn); return;
+      }
+
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('role', data.role);
+      localStorage.setItem('userId', data.userId);
+      localStorage.setItem('fullName', data.fullName);
+      window.location.href = '/admin.html';
+    } catch(err) {
+      errEl.textContent = err.message || 'Login failed.';
+      errEl.style.display = 'block';
+      hideSpinner(btn);
+    }
+  }
+
+  // ── Student Login ──────────────────────────────────────────────────────
+  async function studentLogin(e) {
+    e.preventDefault();
+    const btn = document.getElementById('student-login-btn');
+    const errEl = document.getElementById('student-login-error');
+    errEl.style.display = 'none';
+    showSpinner(btn);
+
+    try {
+      const data = await apiFetch('POST', '/api/auth/login', {
+        email: document.getElementById('student-email').value,
+        password: document.getElementById('student-password').value
+      }, false);
+
+      if (data.role !== 'STUDENT') {
+        errEl.textContent = 'Please use the Admin login instead.';
+        errEl.style.display = 'block';
+        hideSpinner(btn); return;
+      }
+
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('role', data.role);
+      localStorage.setItem('userId', data.userId);
+      localStorage.setItem('fullName', data.fullName);
+      window.location.href = '/student.html';
+    } catch(err) {
+      errEl.textContent = err.message || 'Login failed.';
+      errEl.style.display = 'block';
+      hideSpinner(btn);
+    }
+  }
+
+  // ── Student Register ───────────────────────────────────────────────────
+  async function studentRegister(e) {
+    e.preventDefault();
+    clearAllErrors();
+    const btn = document.getElementById('register-btn');
+    const errEl = document.getElementById('register-error');
+    errEl.style.display = 'none';
+
+    const pw = document.getElementById('reg-password').value;
+    const cpw = document.getElementById('reg-confirmPassword').value;
+    if (pw !== cpw) { showFieldError('reg-confirmPassword', 'Passwords do not match.'); return; }
+
+    showSpinner(btn);
+
+    const body = {
+      fullName: document.getElementById('reg-fullName').value,
+      email: document.getElementById('reg-email').value,
+      password: pw,
+      confirmPassword: cpw,
+      phone: document.getElementById('reg-phone').value,
+      department: document.getElementById('reg-department').value,
+      rollNumber: document.getElementById('reg-rollNumber').value,
+      externalUser: document.getElementById('reg-externalUser').checked
+    };
+
+    try {
+      await apiFetch('POST', '/api/auth/register', body, false);
+
+      // Auto-login
+      const loginData = await apiFetch('POST', '/api/auth/login', {
+        email: body.email, password: body.password
+      }, false);
+
+      localStorage.setItem('token', loginData.token);
+      localStorage.setItem('role', loginData.role);
+      localStorage.setItem('userId', loginData.userId);
+      localStorage.setItem('fullName', loginData.fullName);
+      window.location.href = '/student.html';
+    } catch(err) {
+      if (err.errors) {
+        renderApiErrors(err.errors);
+        const keys = Object.keys(err.errors);
+        if (keys.length > 0) {
+          // Remap field names to IDs
+          const map = { fullName: 'reg-fullName', email: 'reg-email', password: 'reg-password',
+                        confirmPassword: 'reg-confirmPassword', phone: 'reg-phone',
+                        department: 'reg-department', rollNumber: 'reg-rollNumber' };
+          Object.entries(err.errors).forEach(([k, v]) => showFieldError(map[k] || k, v));
+        }
+      } else {
+        errEl.textContent = err.message || 'Registration failed.';
+        errEl.style.display = 'block';
+      }
+      hideSpinner(btn);
+    }
+  }
+
+  // ── Password helpers ───────────────────────────────────────────────────
+  function onPasswordInput(val) {
+    const strength = checkPasswordStrength(val);
+    updateStrengthMeter(strength, 'strength-meter');
+  }
+
+  function checkConfirmPassword() {
+    const pw = document.getElementById('reg-password').value;
+    const cpw = document.getElementById('reg-confirmPassword').value;
+    const indicator = document.getElementById('confirm-indicator');
+    if (!cpw) { indicator.textContent = ''; return; }
+    indicator.textContent = pw === cpw ? '✓' : '✗';
+    indicator.style.color = pw === cpw ? 'var(--success)' : 'var(--danger)';
+  }
+
+  function validateEmailBlur() {
+    const email = document.getElementById('reg-email').value;
+    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (email && !re.test(email)) showFieldError('reg-email', 'Please enter a valid email address.');
+    else clearFieldError('reg-email');
+  }
+</script>
+</body>
+</html>
